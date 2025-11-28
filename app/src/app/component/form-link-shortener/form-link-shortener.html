@@ -1,0 +1,59 @@
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <h1>Acortador de URLs</h1>
+      <p>Crea enlaces cortos y fáciles de compartir</p>
+    </div>
+
+    <div class="form-section">
+      <div class="input-group">
+        <label for="url">URL a acortar</label>
+        <input id="url" type="url" [(ngModel)]="url" placeholder="https://ejemplo.com/una-url-muy-larga"
+          [disabled]="isLoading" (keyup.enter)="createShortUrl()" />
+      </div>
+
+      <div *ngIf="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <button class="btn btn-primary" (click)="createShortUrl()" [disabled]="isLoading || !url">
+        <span *ngIf="!isLoading">Acortar URL</span>
+        <span *ngIf="isLoading">Creando enlace...</span>
+      </button>
+    </div>
+
+    <div *ngIf="shortCode" class="result-section">
+      <h3>¡Enlace creado exitosamente!</h3>
+
+      <div class="short-url-box">
+        <p class="label">Tu enlace corto:</p>
+        <div class="url-container">
+          <code class="short-url">{{ getShortUrl() }}</code>
+          <button class="btn-icon" (click)="copyToClipboard()" [title]="copied ? 'Copiado!' : 'Copiar al portapapeles'">
+            {{ copied ? '✓' : '📋' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <a [href]="'/short/' + shortCode" class="btn btn-success" target="_blank">
+          Probar redirección
+        </a>
+
+        <button class="btn btn-secondary" (click)="reset()">
+          Crear otro enlace
+        </button>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h4>Características:</h4>
+      <ul>
+        <li>✓ Enlaces cortos fáciles de compartir</li>
+        <li>✓ Redirección automática en 5 segundos</li>
+        <li>✓ Detección de enlaces inexistentes</li>
+        <li>✓ Botón de copiado rápido</li>
+      </ul>
+    </div>
+  </div>
+</div>
