@@ -50,7 +50,7 @@ export class FormLinkShortener { url: string = '';
 
     this.http.post<ShortUrlResponse>(
       `${this.config.backendUrl}/prod/shorten`, 
-      { url: this.url }
+      { "url": this.url }
     ).subscribe({
       next: (data) => {
         this.shortCode = data.code || data.shortCode || data.id || '';
