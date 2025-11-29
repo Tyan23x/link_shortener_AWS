@@ -1,13 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { Config } from '../../services/config/config';
-
-interface RedirectResponse {
-  url?: string;
-  originalUrl?: string;
-}
 
 @Component({
   selector: 'app-redirect',
@@ -15,50 +9,24 @@ interface RedirectResponse {
   templateUrl: './redirect.html',
   styleUrl: './redirect.scss',
 })
-export class Redirect implements OnInit{
- isLoading: boolean = true;
-  notFound: boolean = false;
+export class Redirect implements OnInit {
+  isLoading = true;
+  notFound = false;
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient,
     private config: Config
   ) {}
 
   ngOnInit(): void {
     const code = this.route.snapshot.paramMap.get('code');
-    
-    if (code) {
-      this.redirectToUrl(code);
-    } else {
+    if (!code) {
       this.notFound = true;
       this.isLoading = false;
+      return;
     }
+
+    const redirectUrl = `${this.config.backendUrlRedir}prod/${code}`;
+    window.location.href = redirectUrl;
   }
-
-  redirectToUrl(code: string): void {
-  this.http.get<RedirectResponse>(
-    `${this.config.backendUrlRedir}prod/${code}`
-  ).subscribe({
-    next: (data) => {
-      console.log('aqui data.originalUrl>>>>>>>>>', data.originalUrl);
-      console.log('aqui data.Url>>>>>>>>>', data.url);
-      
-      const url = data.url || data.originalUrl;
-      if (!url) {
-        this.notFound = true;
-        return;
-      }
-
-     setTimeout(() => {
-          location.href = url ;
-        }, 5000);
-    },
-    error: (err) => {
-      console.error('Error:', err);
-      this.isLoading = false;
-      this.notFound = true;
-    }
-  });
-}
 }
