@@ -37,19 +37,25 @@ export class Redirect implements OnInit{
   }
 
   redirectToUrl(code: string): void {
-    this.http.get<RedirectResponse>(
-      `${this.config.backendUrl}/api/short/${code}`
-    ).subscribe({
-      next: (data) => {
-        setTimeout(() => {
-          window.location.href = data.url || data.originalUrl || '/';
-        }, 5000);
-      },
-      error: (err) => {
-        console.error('Error:', err);
-        this.isLoading = false;
+  this.http.get<RedirectResponse>(
+    `${this.config.backendUrlRedir}prod/${code}`
+  ).subscribe({
+    next: (data) => {
+      const url = data.url || data.originalUrl;
+      if (!url) {
         this.notFound = true;
+        return;
       }
-    });
-  }
+
+     setTimeout(() => {
+          window.location.href = url ;
+        }, 5000);
+    },
+    error: (err) => {
+      console.error('Error:', err);
+      this.isLoading = false;
+      this.notFound = true;
+    }
+  });
+}
 }

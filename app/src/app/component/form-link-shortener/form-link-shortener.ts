@@ -63,7 +63,7 @@ export class FormLinkShortener { url: string = '';
       }
     });
   }
-
+  
   isValidUrl(url: string): boolean {
     try {
       new URL(url);
@@ -72,7 +72,7 @@ export class FormLinkShortener { url: string = '';
       return false;
     }
   }
-
+  
   copyToClipboard(): void {
     const shortUrl = this.getShortUrl();
     navigator.clipboard.writeText(shortUrl).then(() => {
@@ -80,9 +80,9 @@ export class FormLinkShortener { url: string = '';
       setTimeout(() => this.copied = false, 2000);
     });
   }
-
+  
   getShortUrl(): string {
-    return `${window.location.origin}/short/${this.shortCode}`;
+    return `${window.location.origin}/${this.shortCode}`;
   }
 
   reset(): void {
