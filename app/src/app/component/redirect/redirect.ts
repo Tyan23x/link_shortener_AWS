@@ -41,6 +41,9 @@ export class Redirect implements OnInit{
     `${this.config.backendUrlRedir}prod/${code}`
   ).subscribe({
     next: (data) => {
+      console.log('aqui data.originalUrl>>>>>>>>>', data.originalUrl);
+      console.log('aqui data.Url>>>>>>>>>', data.url);
+      
       const url = data.url || data.originalUrl;
       if (!url) {
         this.notFound = true;
@@ -48,7 +51,7 @@ export class Redirect implements OnInit{
       }
 
      setTimeout(() => {
-          window.location.href = url ;
+          location.href = url ;
         }, 5000);
     },
     error: (err) => {
