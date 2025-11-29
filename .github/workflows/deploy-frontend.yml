@@ -10,7 +10,8 @@ on:
 
 env:
   NODE_VERSION: '22.x'
-  AWS_REGION: 'us-east-1'
+  AWS_REGION: 'us-east-2'
+  ANGULAR_PROJECT_DIR: './app'  
 
 jobs:
   deploy:
@@ -23,39 +24,42 @@ jobs:
     
     steps:
       
-      - name:  Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
       
       
-      - name:  Setup Node.js ${{ env.NODE_VERSION }}
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: '${{ env.ANGULAR_PROJECT_DIR }}/package-lock.json'
       
       
-      - name:  Install dependencies
+      - name: Install dependencies
+        working-directory: ${{ env.ANGULAR_PROJECT_DIR }}
         run: |
           if [ -f package-lock.json ]; then
-            echo " Using npm ci (faster, deterministic)"
+            echo "Using npm ci (faster, deterministic)"
             npm ci
           else
-            echo " Using npm install (package-lock.json not found)"
+            echo "Using npm install (package-lock.json not found)"
             npm install
           fi
       
       
-      - name:  Build Angular application
+      - name: Build Angular application
+        working-directory: ${{ env.ANGULAR_PROJECT_DIR }}
         run: |
           echo "Building Angular application..."
-          ng build --configuration=production
+          npm run build -- --configuration=production
           
-          echo " Build completed"
-          echo " Build output:"
+          echo "Build completed"
+          echo "Build output:"
           ls -la dist/
       
       
-      - name:  Configure AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -63,14 +67,14 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       
       
-      - name:  Setup Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ~1.6
           terraform_wrapper: false
       
       
-      - name:  Get infrastructure details
+      - name: Get infrastructure details
         id: terraform
         working-directory: ./terraform
         run: |
@@ -89,35 +93,49 @@ jobs:
           echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
           echo "cloudfront_domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_OUTPUT
           
-          echo " S3 Bucket: $BUCKET_NAME"
-          echo " CloudFront Distribution ID: $DISTRIBUTION_ID"
-          echo " CloudFront Domain: $CLOUDFRONT_DOMAIN"
+          echo "S3 Bucket: $BUCKET_NAME"
+          echo "CloudFront Distribution ID: $DISTRIBUTION_ID"
+          echo "CloudFront Domain: $CLOUDFRONT_DOMAIN"
       
       # 8. Sincronizar archivos a S3
-      - name:  Sync files to S3
+      - name: Sync files to S3
         run: |
           echo "Deploying to S3 bucket: ${{ steps.terraform.outputs.bucket_name }}"
           echo "CloudFront distribution id: ${{ steps.terraform.outputs.distribution_id }}"
           
-          echo "Syncing files to S3..."
-          aws s3 sync dist/frontendparcial_3/browser/ s3://${{ steps.terraform.outputs.bucket_name }} --delete
+          # Navegar al directorio del build
+          cd ${{ env.ANGULAR_PROJECT_DIR }}
           
-          echo " Files synced successfully"
+          # Encontrar el directorio de build
+          BUILD_DIR=$(find dist -type d -maxdepth 1 -mindepth 1 | head -n 1)
+          
+          if [ -z "$BUILD_DIR" ]; then
+            echo "Error: Build directory not found in dist/"
+            ls -la dist/
+            exit 1
+          fi
+          
+          echo "Build directory: $BUILD_DIR"
+          
+          echo "Syncing files to S3..."
+          aws s3 sync $BUILD_DIR/browser/ s3://${{ steps.terraform.outputs.bucket_name }} --delete
+          
+          echo "Files synced successfully"
       
-      # 9. Invalidar caché de CloudFront
-      - name:  Invalidate CloudFront cache
+      
+      - name: Invalidate CloudFront cache
         run: |
           echo "Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.terraform.outputs.distribution_id }} \
             --paths "/*"
           
-          echo " Cache invalidation created"
+          echo "Cache invalidation created"
       
-      # 10. Resumen del deployment
-      - name:  Deployment Summary
+      
+      - name: Deployment Summary
         run: |
-          echo "###  Deployment Complete! " >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Complete!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Your application should be live shortly." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -126,7 +144,7 @@ jobs:
           echo "- **CloudFront Distribution ID**: \`${{ steps.terraform.outputs.distribution_id }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Website URL**: https://${{ steps.terraform.outputs.cloudfront_domain }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo " **Note**: CloudFront propagation may take 5-10 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: CloudFront propagation may take 5-10 minutes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo " **Access your application at:** https://${{ steps.terraform.outputs.cloudfront_domain }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Access your application at:** https://${{ steps.terraform.outputs.cloudfront_domain }}" >> $GITHUB_STEP_SUMMARY
