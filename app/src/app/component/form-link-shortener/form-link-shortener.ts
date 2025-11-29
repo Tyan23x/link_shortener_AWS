@@ -82,7 +82,7 @@ export class FormLinkShortener { url: string = '';
   }
   
   getShortUrl(): string {
-    return `${window.location.origin}/${this.shortCode}`;
+    return `${window.location.origin}/short/${this.shortCode}`;
   }
 
   reset(): void {
