@@ -7,10 +7,6 @@ on:
       - develo
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '20.x'
-  AWS_REGION: 'us-east-2'
-
 jobs:
   deploy:
     name: Build and Deploy Frontend
