@@ -10,11 +10,10 @@ export class Config {
   };
 
   private getBackendUrl(): string {
-    // Puedes cambiar esto según tu entorno
     if (this.isProduction()) {
-      return 'https://tu-api-produccion.com';
+      return 'https://6bfypnxd34.execute-api.us-east-2.amazonaws.com/';
     }
-    return 'http://localhost:3000'; // o tu backend local
+    return 'https://6bfypnxd34.execute-api.us-east-2.amazonaws.com/';
   }
 
   private isProduction(): boolean {

@@ -1,0 +1,117 @@
+name: Deploy Frontend to S3 + CloudFront
+
+on:
+  push:
+    branches:
+      - main
+      - develo
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22.x'
+  AWS_REGION: 'us-east-2'
+
+jobs:
+  deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write 
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Angular application
+        run: npm run build -- --configuration production
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.6
+          terraform_wrapper: false
+      
+      - name: Get Terraform outputs
+        id: terraform
+        working-directory: ./terraform
+        run: |
+          # Inicializar Terraform (sin aplicar cambios)
+          terraform init -backend=false
+          
+          # Obtener outputs
+          BUCKET_NAME=$(terraform output -raw s3_bucket_name)
+          DISTRIBUTION_ID=$(terraform output -raw cloudfront_distribution_id)
+          
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "distribution_id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+          
+          echo "Bucket: $BUCKET_NAME"
+          echo "Distribution: $DISTRIBUTION_ID"
+      
+      - name: Deploy to S3
+        run: |
+          # Directorio de build de Angular
+          BUILD_DIR="dist/frontendparcial_3/browser"
+          
+          # Verificar que existe el directorio
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Error: No se encontró el directorio $BUILD_DIR"
+            echo "Contenido de dist/:"
+            ls -la dist/ || echo "dist/ no existe"
+            exit 1
+          fi
+          
+          echo "Build directory: $BUILD_DIR"
+          echo "Files to upload:"
+          ls -la $BUILD_DIR
+          
+          # Subir archivos estáticos con caché largo (JS, CSS, imágenes)
+          aws s3 sync $BUILD_DIR s3://${{ steps.terraform.outputs.bucket_name }} \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.html"
+          
+          # Subir archivos HTML con caché corto para actualizaciones rápidas
+          aws s3 sync $BUILD_DIR s3://${{ steps.terraform.outputs.bucket_name }} \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --exclude "*" \
+            --include "*.html"
+          
+          echo "Files uploaded successfully"
+      
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.terraform.outputs.distribution_id }} \
+            --paths "/*"
+          
+          echo "Cache invalidation created"
+      
+      - name: Deployment Summary
+        run: |
+          echo "### Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket**: ${{ steps.terraform.outputs.bucket_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront Distribution**: ${{ steps.terraform.outputs.distribution_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Website URL**: https://$(cd terraform && terraform output -raw cloudfront_domain_name)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo " CloudFront propagation may take 5-10 minutes" >> $GITHUB_STEP_SUMMARY

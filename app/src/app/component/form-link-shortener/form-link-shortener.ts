@@ -49,7 +49,7 @@ export class FormLinkShortener { url: string = '';
     this.shortCode = '';
 
     this.http.post<ShortUrlResponse>(
-      `${this.config.backendUrl}/api/shorten`, 
+      `${this.config.backendUrl}/prod/shorten`, 
       { url: this.url }
     ).subscribe({
       next: (data) => {

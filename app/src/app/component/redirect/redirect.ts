@@ -2,6 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { Config } from '../../services/config/config';
+
+interface RedirectResponse {
+  url?: string;
+  originalUrl?: string;
+}
 
 @Component({
   selector: 'app-redirect',
@@ -10,15 +16,16 @@ import { CommonModule } from '@angular/common';
   styleUrl: './redirect.scss',
 })
 export class Redirect implements OnInit{
-  isLoading: boolean = true;
+ isLoading: boolean = true;
   notFound: boolean = false;
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient
+    private http: HttpClient,
+    private config: Config
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     const code = this.route.snapshot.paramMap.get('code');
     
     if (code) {
@@ -29,19 +36,20 @@ export class Redirect implements OnInit{
     }
   }
 
-  redirectToUrl(code: string) {
-    // this.http.get<any>(`${environment.backendUrl}/api/short/${code}`)
-    //   .subscribe({
-    //     next: (data) => {
-    //       // Esperar 5 segundos antes de redireccionar
-    //       setTimeout(() => {
-    //         window.location.href = data.url || data.originalUrl;
-    //       }, 5000);
-    //     },
-    //     error: (err) => {
-    //       this.isLoading = false;
-    //       this.notFound = true;
-    //     }
-    //   });
+  redirectToUrl(code: string): void {
+    this.http.get<RedirectResponse>(
+      `${this.config.backendUrl}/api/short/${code}`
+    ).subscribe({
+      next: (data) => {
+        setTimeout(() => {
+          window.location.href = data.url || data.originalUrl || '/';
+        }, 5000);
+      },
+      error: (err) => {
+        console.error('Error:', err);
+        this.isLoading = false;
+        this.notFound = true;
+      }
+    });
   }
 }

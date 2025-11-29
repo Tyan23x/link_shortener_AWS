@@ -1,1 +1,14 @@
-<p>redirect works!</p>
+<div class="redirect-container">
+    <div *ngIf="isLoading" class="loading-screen">
+        <div class="spinner"></div>
+        <h2>Redirigiendo...</h2>
+        <p>Serás redirigido en unos segundos</p>
+    </div>
+
+    <div *ngIf="notFound" class="not-found-screen">
+        <div class="icon">⚠️</div>
+        <h2>404 - Página No Encontrada</h2>
+        <p>Lo sentimos, el enlace que buscas no existe en nuestra base de datos.</p>
+        <a routerLink="/" class="btn">Volver al inicio</a>
+    </div>
+</div>
